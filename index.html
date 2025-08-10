@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz Game</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5;
+            color: #1a202c;
+        }
+        .game-wrapper {
+            display: grid;
+            grid-template-columns: 3fr 1fr;
+            gap: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        @media (max-width: 1024px) {
+            .game-wrapper {
+                grid-template-columns: 1fr;
+            }
+        }
+        .prize-section ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            text-align: center;
+        }
+        .prize-item {
+            background: #ffffff;
+            margin-bottom: 0.5rem;
+            padding: 0.75rem;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            color: #4a5568;
+            font-weight: 500;
+            border: 1px solid #e2e8f0;
+        }
+        .prize-item.active {
+            background: #3b82f6;
+            color: #ffffff;
+            transform: scale(1.05);
+            border-color: #3b82f6;
+            font-weight: 700;
+        }
+        .quiz-section {
+            display: flex;
+            flex-direction: column;
+        }
+        .quiz-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+        .lifeline-buttons {
+            display: flex;
+            gap: 1rem;
+        }
+        .lifeline {
+            width: 50px;
+            height: 50px;
+            border: 1px solid #cbd5e0;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: #ffffff;
+            color: #4a5568;
+        }
+        .lifeline:hover {
+            background: #e2e8f0;
+        }
+        .lifeline.used {
+            opacity: 0.4;
+            cursor: not-allowed;
+            background: #e2e8f0;
+        }
+        .timer-display {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #3b82f6;
+            color: #ffffff;
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+        .question-display {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            padding: 2rem;
+            border-radius: 12px;
+            text-align: center;
+            font-size: 1.5rem;
+            margin-bottom: 2rem;
+            min-height: 150px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .options-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+        .option {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            padding: 1rem;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+        }
+        .option:hover {
+            border-color: #3b82f6;
+            background: #eff6ff;
+        }
+        .option.correct {
+            background: #10b981;
+            border-color: #10b981;
+            color: white;
+            animation: pulse-green 1s;
+        }
+        .option.incorrect {
+            background: #ef4444;
+            border-color: #ef4444;
+            color: white;
+        }
+        .option.disabled {
+            opacity: 0.5;
+            pointer-events: none;
+            background: #f7fafc;
+        }
+        .option-letter {
+            color: #3b82f6;
+            margin-right: 1rem;
+            font-weight: 700;
+        }
+        .option.correct .option-letter, .option.incorrect .option-letter {
+            color: white;
+        }
+        @keyframes pulse-green {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        .popup {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 50;
+        }
+        .popup-content {
+             background: #ffffff;
+             padding: 3rem;
+             border-radius: 1rem;
+             text-align: center;
+             width: 90%;
+             max-width: 500px;
+        }
+        .hidden { display: none !important; }
+        .fun-fact {
+            margin-top: 1.5rem;
+            background: #fef9c3;
+            color: #b45309;
+            border-radius: 8px;
+            padding: 1rem;
+            font-size: 1.1rem;
+            border: 1px solid #fde68a;
+            animation: fadeIn 1s;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        .confetti {
+            position: fixed;
+            pointer-events: none;
+            z-index: 100;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+        }
+    </style>
+</head>
+<body>
+   
+    <div id="mode-popup" class="popup">
+        <div class="popup-content">
+            <h2 class="text-3xl font-bold mb-6">Welcome to Skillcraft Quiz!</h2>
+            <p class="mb-4 text-lg">Choose your game mode:</p>
+            <button id="kids-mode" class="bg-yellow-400 text-white font-bold py-3 px-8 rounded-lg text-lg hover:bg-yellow-500 transition mb-4 w-full">Kids (Under 13)</button>
+            <button id="teens-mode" class="bg-blue-600 text-white font-bold py-3 px-8 rounded-lg text-lg hover:bg-blue-700 transition w-full">Above 13 Years</button>
+        </div>
+    </div>
+    <!-- Personalized Greeting -->
+    <div id="greeting-popup" class="popup hidden">
+        <div class="popup-content">
+            <h2 class="text-2xl font-bold mb-4">Hello, <span id="player-name"></span>!</h2>
+            <p class="mb-4">Ready to test your skills?</p>
+            <input id="name-input" type="text" placeholder="Enter your name" class="border px-4 py-2 rounded mb-4 w-full" maxlength="15"/>
+            <button id="start-btn" class="bg-green-500 text-white font-bold py-2 px-6 rounded-lg hover:bg-green-600 transition">Start Quiz</button>
+        </div>
+    </div>
+    <!-- Confetti Canvas -->
+    <canvas id="confetti-canvas" class="confetti hidden"></canvas>
+    <div class="game-wrapper">
+        <main class="quiz-section">
+            <div class="quiz-header">
+                <div class="lifeline-buttons">
+                    <div id="fifty-fifty-btn" class="lifeline" title="50:50">
+                        <span class="font-bold">50:50</span>
+                    </div>
+                    <div id="poll-btn" class="lifeline" title="Audience Poll">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                        </svg>
+                    </div>
+                </div>
+                <div class="timer-display" id="timer">30</div>
+            </div>
+            <div class="question-display" id="question">
+                Welcome to the Quiz!
+            </div>
+            <div class="options-grid" id="options"></div>
+            <div id="fun-fact" class="fun-fact hidden"></div>
+            <div id="streak" class="mt-4 text-green-600 font-bold text-lg"></div>
+        </main>
+        <aside class="prize-section">
+            <h2 class="text-2xl font-bold text-center mb-4">Prize Money</h2>
+            <ul id="prize-list"></ul>
+        </aside>
+    </div>
+    <div id="game-over-popup" class="popup hidden">
+        <div class="popup-content">
+            <h2 class="text-4xl font-bold text-gray-800 mb-4">Game Over!</h2>
+            <p class="text-xl mb-2">You won: <span id="final-prize" class="font-bold text-2xl text-blue-600"></span></p>
+            <div id="final-streak" class="mb-4"></div>
+            <button id="restart-button" class="bg-blue-600 text-white font-bold py-3 px-8 rounded-lg text-lg hover:bg-blue-700 transition">Play Again</button>
+        </div>
+    </div>
+    <div id="poll-popup" class="popup hidden">
+        <div class="popup-content">
+            <h2 class="text-3xl font-bold text-gray-800 mb-6">Audience Poll</h2>
+            <div id="poll-chart" class="flex justify-around items-end h-48 space-x-4"></div>
+            <button id="close-poll-button" class="mt-8 bg-gray-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-gray-700 transition">Close</button>
+        </div>
+    </div>
+    <audio id="correct-sound" src="https://cdn.pixabay.com/audio/2022/07/26/audio_124bfae6c2.mp3"></audio>
+    <audio id="wrong-sound" src="https://cdn.pixabay.com/audio/2022/03/15/audio_115b9b1e7c.mp3"></audio>
+    <audio id="win-sound" src="https://cdn.pixabay.com/audio/2022/07/26/audio_124bfae6c2.mp3"></audio>
+    <script>
+        // --- Questions dono mode ke liye, yahan likh diye hain ---
+        const questionsData = {
+            kids: [
+                { question: "What color is the sky on a clear day?", options: ["Blue", "Green", "Red", "Yellow"], answer: 0, fact: "Sky blue dikhta hai kyunki sunlight atmosphere se scatter hoti hai." },
+                { question: "Which animal is known as the King of the Jungle?", options: ["Elephant", "Lion", "Tiger", "Giraffe"], answer: 1, fact: "Lion ko jungle ka king bolte hain, par yeh mostly grasslands me milta hai!" },
+                { question: "How many legs does a spider have?", options: ["6", "8", "10", "12"], answer: 1, fact: "Spider ke 8 pair hote hain, isliye woh arachnid hai, insect nahi." },
+                { question: "What do bees make?", options: ["Milk", "Honey", "Bread", "Juice"], answer: 1, fact: "Bees flowers se nectar leke honey banati hain." },
+                { question: "Which planet do we live on?", options: ["Mars", "Venus", "Earth", "Jupiter"], answer: 2, fact: "Earth pe hi abhi tak life mili hai!" }
+            ],
+            teens: [
+                { question: "Who painted the Mona Lisa?", options: ["Vincent van Gogh", "Leonardo da Vinci", "Pablo Picasso", "Claude Monet"], answer: 1, fact: "Leonardo da Vinci ne Mona Lisa 16th century me banayi thi." },
+                { question: "What is the chemical symbol for gold?", options: ["Au", "Ag", "Gd", "Go"], answer: 0, fact: "'Au' Latin word 'Aurum' se aaya hai." },
+                { question: "Which country hosted the 2016 Summer Olympics?", options: ["China", "Brazil", "UK", "Russia"], answer: 1, fact: "2016 Olympics Rio de Janeiro, Brazil me hue the." },
+                { question: "What is the largest organ in the human body?", options: ["Heart", "Liver", "Skin", "Lungs"], answer: 2, fact: "Skin sabse bada organ hai body ka!" },
+                { question: "Who wrote 'To Kill a Mockingbird'?", options: ["Harper Lee", "Mark Twain", "J.K. Rowling", "Jane Austen"], answer: 0, fact: "Harper Lee ne 1960 me yeh novel publish kiya tha." }
+            ]
+        };
+        // --- Prize money list, har sahi jawab pe badhta jayega ---
+        const prizeMoney = ["₹5,000", "₹10,000", "₹20,000", "₹40,000", "₹80,000"];
+        const TIME_PER_QUESTION = 30; // Har question ke liye 30 seconds
+
+        // --- Sare elements ko pakad liya hai  ---
+        const questionDisplay = document.getElementById('question');
+        const optionsGrid = document.getElementById('options');
+        const prizeList = document.getElementById('prize-list');
+        const gameOverPopup = document.getElementById('game-over-popup');
+        const finalPrizeDisplay = document.getElementById('final-prize');
+        const restartButton = document.getElementById('restart-button');
+        const fiftyFiftyBtn = document.getElementById('fifty-fifty-btn');
+        const pollBtn = document.getElementById('poll-btn');
+        const pollPopup = document.getElementById('poll-popup');
+        const pollChart = document.getElementById('poll-chart');
+        const closePollButton = document.getElementById('close-poll-button');
+        const timerDisplay = document.getElementById('timer');
+        const funFactDiv = document.getElementById('fun-fact');
+        const streakDiv = document.getElementById('streak');
+        const confettiCanvas = document.getElementById('confetti-canvas');
+        // --- Mode aur greeting popups ke liye ---
+        const modePopup = document.getElementById('mode-popup');
+        const kidsModeBtn = document.getElementById('kids-mode');
+        const teensModeBtn = document.getElementById('teens-mode');
+        const greetingPopup = document.getElementById('greeting-popup');
+        const playerNameSpan = document.getElementById('player-name');
+        const nameInput = document.getElementById('name-input');
+        const startBtn = document.getElementById('start-btn');
+        const finalStreak = document.getElementById('final-streak');
+        // --- Sounds ke liye ---
+        const correctSound = document.getElementById('correct-sound');
+        const wrongSound = document.getElementById('wrong-sound');
+        const winSound = document.getElementById('win-sound');
+        // --- Game ki state yahan store hogi ---
+        let questions = [];
+        let currentQuestionIndex = 0;
+        let lifelines = { fiftyFifty: false, poll: false };
+        let timeLeft = TIME_PER_QUESTION;
+        let timerInterval;
+        let streak = 0;
+        let maxStreak = 0;
+        let playerName = '';
+
+        // --- Confetti wala function, jeetne pe mast celebration! ---
+        function launchConfetti() {
+            confettiCanvas.classList.remove('hidden');
+            const ctx = confettiCanvas.getContext('2d');
+            confettiCanvas.width = window.innerWidth;
+            confettiCanvas.height = window.innerHeight;
+            let pieces = [];
+            for (let i = 0; i < 120; i++) {
+                pieces.push({
+                    x: Math.random() * confettiCanvas.width,
+                    y: Math.random() * confettiCanvas.height - confettiCanvas.height,
+                    r: Math.random() * 6 + 4,
+                    d: Math.random() * 50 + 50,
+                    color: `hsl(${Math.random()*360},70%,60%)`,
+                    tilt: Math.random() * 10 - 10
+                });
+            }
+            let angle = 0;
+            function draw() {
+                ctx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+                for (let i = 0; i < pieces.length; i++) {
+                    let p = pieces[i];
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2, false);
+                    ctx.fillStyle = p.color;
+                    ctx.fill();
+                    p.y += Math.cos(angle + p.d) + 2 + p.r/2;
+                    p.x += Math.sin(angle) * 2;
+                    if (p.y > confettiCanvas.height) {
+                        p.y = -10;
+                        p.x = Math.random() * confettiCanvas.width;
+                    }
+                }
+                angle += 0.01;
+                if (angle < 2) requestAnimationFrame(draw);
+                else setTimeout(() => confettiCanvas.classList.add('hidden'), 1000);
+            }
+            draw();
+        }
+
+        // --- Array ko random karne ka desi tarika ---
+        function shuffleArray(arr) {
+            for (let i = arr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [arr[i], arr[j]] = [arr[j], arr[i]];
+            }
+        }
+
+        // --- Game start karne ka function, sab reset ho jayega yahan se ---
+        function startGame() {
+            currentQuestionIndex = 0;
+            streak = 0;
+            maxStreak = 0;
+            lifelines = { fiftyFifty: false, poll: false };
+            gameOverPopup.classList.add('hidden');
+            fiftyFiftyBtn.classList.remove('used');
+            pollBtn.classList.remove('used');
+            funFactDiv.classList.add('hidden');
+            streakDiv.textContent = '';
+            loadPrizeLadder();
+            shuffleArray(questions);
+            loadQuestion();
+        }
+
+        function loadPrizeLadder() {
+            prizeList.innerHTML = '';
+            prizeMoney.slice().reverse().forEach((amount, index) => {
+                const li = document.createElement('li');
+                li.textContent = `Q${prizeMoney.length - index}: ${amount}`;
+                li.classList.add('prize-item');
+                li.dataset.level = prizeMoney.length - 1 - index;
+                prizeList.appendChild(li);
+            });
+        }
+
+        function updatePrizeLadder() {
+            document.querySelectorAll('.prize-item').forEach(item => item.classList.remove('active'));
+            const activeItem = document.querySelector(`.prize-item[data-level="${currentQuestionIndex}"]`);
+            if (activeItem) activeItem.classList.add('active');
+        }
+
+        // --- Timer start karne ka kaam, time khatam to game over ---
+        function startTimer() {
+            clearInterval(timerInterval);
+            timeLeft = TIME_PER_QUESTION;
+            timerDisplay.textContent = timeLeft;
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                timerDisplay.textContent = timeLeft;
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    endGame(false);
+                }
+            }, 1000);
+        }
+
+        // --- Question load karne ka main function ---
+        function loadQuestion() {
+            if (currentQuestionIndex >= questions.length) {
+                endGame(true);
+                return;
+            }
+            updatePrizeLadder();
+            startTimer();
+            const currentQuestion = questions[currentQuestionIndex];
+            questionDisplay.textContent = currentQuestion.question;
+            optionsGrid.innerHTML = '';
+            funFactDiv.classList.add('hidden');
+            currentQuestion.options.forEach((option, index) => {
+                const optionEl = document.createElement('div');
+                optionEl.classList.add('option');
+                optionEl.dataset.index = index;
+                optionEl.innerHTML = `<span class="option-letter">${String.fromCharCode(65 + index)}:</span> ${option}`;
+                optionEl.addEventListener('click', () => selectAnswer(optionEl, index));
+                optionsGrid.appendChild(optionEl);
+            });
+        }
+
+        // --- Jab user answer select kare, yeh function chalega ---
+        function selectAnswer(element, index) {
+            clearInterval(timerInterval);
+            const currentQuestion = questions[currentQuestionIndex];
+            const allOptions = document.querySelectorAll('.option');
+            allOptions.forEach(opt => opt.style.pointerEvents = 'none');
+            if (index === currentQuestion.answer) {
+                element.classList.add('correct');
+                correctSound.currentTime = 0; correctSound.play();
+                streak++;
+                maxStreak = Math.max(maxStreak, streak);
+                streakDiv.textContent = streak > 1 ? `🔥 Streak: ${streak} correct!` : '';
+                showFunFact(currentQuestion.fact, true);
+                setTimeout(() => {
+                    currentQuestionIndex++;
+                    loadQuestion();
+                }, 2000);
+            } else {
+                element.classList.add('incorrect');
+                allOptions[currentQuestion.answer].classList.add('correct');
+                wrongSound.currentTime = 0; wrongSound.play();
+                streakDiv.textContent = '';
+                showFunFact(currentQuestion.fact, false);
+                setTimeout(() => endGame(false), 2000);
+            }
+        }
+
+        // --- Fun fact dikhane ka function, har question ke baad ---
+        function showFunFact(fact, correct) {
+            funFactDiv.textContent = (correct ? "Sahi jawab! " : "Galat jawab! ") + fact;
+            funFactDiv.classList.remove('hidden');
+        }
+
+        // --- Game over hone pe kya dikhana hai, yahan likha hai ---
+        function endGame(isWinner) {
+            clearInterval(timerInterval);
+            let prizeWon = isWinner ? prizeMoney[prizeMoney.length - 1] : (currentQuestionIndex > 0 ? prizeMoney[currentQuestionIndex - 1] : "₹0");
+            finalPrizeDisplay.textContent = prizeWon;
+            finalStreak.textContent = maxStreak > 1 ? `Aapka best streak: ${maxStreak} sahi jawab lagatar!` : '';
+            gameOverPopup.classList.remove('hidden');
+            if (isWinner) {
+                winSound.currentTime = 0; winSound.play();
+                launchConfetti();
+            }
+        }
+
+        // --- 50:50 lifeline, do galat options hata dega ---
+        fiftyFiftyBtn.addEventListener('click', () => {
+            if (lifelines.fiftyFifty) return;
+            lifelines.fiftyFifty = true;
+            fiftyFiftyBtn.classList.add('used');
+            const currentQuestion = questions[currentQuestionIndex];
+            const correctAnswerIndex = currentQuestion.answer;
+            let incorrectIndices = [];
+            for(let i=0; i<4; i++) if(i !== correctAnswerIndex) incorrectIndices.push(i);
+            incorrectIndices.splice(Math.floor(Math.random() * incorrectIndices.length), 1);
+            document.querySelectorAll('.option').forEach(opt => {
+                if(incorrectIndices.includes(parseInt(opt.dataset.index))) opt.classList.add('disabled');
+            });
+        });
+
+        // --- Audience poll lifeline, random percentage dikhayega ---
+        pollBtn.addEventListener('click', () => {
+            if (lifelines.poll) return;
+            lifelines.poll = true;
+            pollBtn.classList.add('used');
+            const currentQuestion = questions[currentQuestionIndex];
+            const correctAnswerIndex = currentQuestion.answer;
+            let percentages = [0, 0, 0, 0];
+            let remaining = 100;
+            percentages[correctAnswerIndex] = Math.floor(Math.random() * 40) + 30;
+            remaining -= percentages[correctAnswerIndex];
+            for(let i=0; i<4; i++){
+                if(i !== correctAnswerIndex){
+                    const share = Math.floor(Math.random() * (remaining / 2));
+                    percentages[i] = share;
+                    remaining -= share;
+                }
+            }
+            percentages[percentages.findIndex(p => p === 0)] += remaining;
+            pollChart.innerHTML = '';
+            percentages.forEach((p, i) => {
+                pollChart.innerHTML += `
+                    <div class="flex flex-col items-center w-1/4">
+                        <div class="w-12 bg-blue-500" style="height: ${p}%;"></div>
+                        <div class="mt-2 font-bold">${String.fromCharCode(65 + i)}: ${p}%</div>
+                    </div>
+                `;
+            });
+            pollPopup.classList.remove('hidden');
+        });
+
+        // --- Poll band karne ka button ---
+        closePollButton.addEventListener('click', () => pollPopup.classList.add('hidden'));
+
+        // --- Restart button, firse mode choose karne dega ---
+        restartButton.addEventListener('click', () => {
+            modePopup.classList.remove('hidden');
+            gameOverPopup.classList.add('hidden');
+        });
+
+        // --- Mode aur greeting popup logic, naam lene ke liye bhi ---
+        kidsModeBtn.addEventListener('click', () => {
+            questions = [...questionsData.kids];
+            modePopup.classList.add('hidden');
+            greetingPopup.classList.remove('hidden');
+            nameInput.value = '';
+        });
+        teensModeBtn.addEventListener('click', () => {
+            questions = [...questionsData.teens];
+            modePopup.classList.add('hidden');
+            greetingPopup.classList.remove('hidden');
+            nameInput.value = '';
+        });
+        startBtn.addEventListener('click', () => {
+            playerName = nameInput.value.trim() || "Player";
+            playerNameSpan.textContent = playerName;
+            greetingPopup.classList.add('hidden');
+            setTimeout(startGame, 300);
+        });
+        nameInput.addEventListener('keydown', e => {
+            if (e.key === 'Enter') startBtn.click();
+        });
+
+        // --- Confetti canvas ko resize karne ke liye ---
+        window.addEventListener('resize', () => {
+            confettiCanvas.width = window.innerWidth;
+            confettiCanvas.height = window.innerHeight;
+        });
+
+        // --- Page load hote hi mode popup dikhana hai ---
+        document.addEventListener('DOMContentLoaded', () => {
+            modePopup.classList.remove('hidden');
+        });
+    </script>
+</body>
